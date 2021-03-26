@@ -8,13 +8,16 @@
 #include <beast/http/string_body.hpp>
 #include <thread>
 #include <iostream>
-//#include <boost/filesystem.hpp>
 #include <beast.hpp>
 #include <nlohmann/json.hpp>
 
 class SuggestServer{
-  SuggestServer(boost::string_view& URL, boost::asio::ip::address& address,
-                unsigned port): URL_(URL), address_(address), port_(port){};
+ public:
+  explicit SuggestServer(boost::string_view& URL,
+                         boost::asio::ip::address& address,
+                         unsigned port):  URL_(URL),
+                                          address_(address),
+                                          port_(port){};
   void StartServer();
 
  private:

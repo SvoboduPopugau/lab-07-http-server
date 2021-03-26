@@ -53,11 +53,13 @@ target_include_directories(${PROJECT_NAME} PUBLIC
   "$<INSTALL_INTERFACE:include>"
 )
 
-target_link_libraries(demo ${PROJECT_NAME}
+target_link_libraries(${PROJECT_NAME}
         GTest::gtest_main
         Beast::Beast
         nlohmann_json::nlohmann_json
         asio::asio_static)
+
+target_link_libraries(demo ${PROJECT_NAME})
 
 if(BUILD_TESTS)
   add_executable(tests
