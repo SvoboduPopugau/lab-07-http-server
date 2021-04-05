@@ -1,23 +1,123 @@
 // Copyright 2020 Your Name <your_email>
 
 #include <SuggestServer.hpp>
+#include <fstream>
 
-
-void RequestHandler(boost::asio::ip::tcp::socket&& socket,
-                    boost::string_view directory) {
-
+template <bool isRequest, class Body, class Fields>
+void SendResponse(ip::tcp::socket&,
+                  beast::http::message<isRequest, Body, Fields> msg){
+  beast::http::serializer<isRequest, Body, Fields> serializer {msg};
+  beast::http::write(socket, serializer);
 }
-void SuggestServer::StartServer() {
-  boost::asio::io_context ioContext;
-  boost::asio::ip::tcp::endpoint endPoint(address_, port_);
-  boost::asio::ip::tcp::acceptor acceptor(ioContext, endPoint);
+
+
+void SuggestServer::RequestHandler(ip::tcp::socket&& socket) {
+  beast::error_code ec;
+  beast::flat_buffer buffer;
 
   for(;;){
-    boost::asio::ip::tcp::socket socket1{ioContext};
+    beast::http::request<beast::http::string_body> req;
+    beast::http::read(socket, buffer, req, ec);
+
+    if (ec == beast::http::error::end_of_stream)
+      break;
+
+    if ((req.method() != beast::http::verb::post) || (req.target() != URL_)
+        || ec){
+      beast::http::response<beast::http::string_body> res{
+        beast::http::status::internal_server_error, req.version()};
+      res.set(beast::http::field::server, BOOST_BEAST_VERSION_STRING);
+      res.set(beast::http::field::content_type, "text/html");
+      res.keep_alive(req.keep_alive());
+      res.body() = "Error! Incorrect request";
+      res.prepare_payload();
+      SendResponse(socket, res);
+      break;
+    } else{
+      beast::http::response<beast::http::string_body> res{
+          beast::http::status::ok, req.version()};
+      res.set(beast::http::field::server, BOOST_BEAST_VERSION_STRING);
+      res.set(beast::http::field::content_type, "application/json");
+      res.keep_alive(req.keep_alive());
+      std::string reqBody;
+      std::string resBody;
+      try{
+          reqBody = json::parse(req.body()).at("input");
+          resBody = GetResponse(reqBody).dump();
+      }
+      catch (...) {
+          resBody = R"({ "status": "ill-formated request" })";
+      }
+      res.body() = resBody;
+      res.prepare_payload();
+      SendResponse(socket, res);
+    }
+    if(ec)
+      break;
+  }
+
+  socket.shutdown(ip::tcp::socket::shutdown_send);
+}
+
+[[noreturn]] void SuggestServer::StartServer() {
+  std::thread([this](){
+    for(;;){
+      UpdateData();
+      std::this_thread::sleep_for(std::chrono::minutes(15));
+    }
+  }).detach();
+  boost::asio::io_context ioContext;
+  ip::tcp::endpoint endPoint(address_, port_);
+  ip::tcp::acceptor acceptor(ioContext, endPoint);
+
+  for(;;){
+    ip::tcp::socket socket1{ioContext};
     acceptor.accept(socket1);
     std::thread([&](){
-      RequestHandler(std::move(socket1), URL_);
+      RequestHandler(std::move(socket1));
     }).detach();
   }
 }
+void SuggestServer::UpdateData() {
+  std::ifstream data_file;
+  data_file.open("../Suggest/suggestions.json");
 
+  if(!data_file.is_open())
+    throw std::runtime_error("Database file couldn't be opened");
+
+  json j_data;
+  data_file >> j_data;
+
+  v_data_.clear();
+  mutex_.lock();
+  for(auto& x : j_data){
+    v_data_.push_back({x.at("name"), x.at("cost")});
+  }
+  std::sort(v_data_.begin(), v_data_.end());
+  mutex_.unlock();
+
+  data_file.close();
+}
+std::vector<Suggestion> SuggestServer::GetMatches(std::string& req) {
+  std::vector<Suggestion> trueSuggestions;
+  mutex_.lock();
+  for(auto& x : v_data_){
+    if((x.str_name.size() >= req.size())
+        && x.str_name.substr(0, req.size()) == req){
+      trueSuggestions.push_back(x);
+    }
+  }
+  mutex_.unlock();
+  return trueSuggestions;
+}
+json SuggestServer::GetResponse(std::string& req) {
+  json responseBody;
+  std::vector<Suggestion> matches = GetMatches(req);
+  unsigned index = 0;
+  for(auto& x : matches){
+    responseBody["suggestions"].push_back({{"text", x.str_name},
+                                           {"position", index}});
+    ++index;
+  }
+  return responseBody;
+}
