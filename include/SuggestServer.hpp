@@ -19,15 +19,6 @@ struct Suggestion{
   std::string str_name;
   unsigned cost;
 };
-bool operator<(const Suggestion& lhs, const Suggestion& rhs) {
-  return lhs.cost < rhs.cost;
-}
-bool operator==(const Suggestion& lhs, const Suggestion& rhs) {
-  return lhs.cost == rhs.cost;
-}
-bool operator>(const Suggestion& lhs, const Suggestion& rhs) {
-  return lhs.cost > rhs.cost;
-}
 
 
 class SuggestServer{

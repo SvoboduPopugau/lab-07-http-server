@@ -3,11 +3,21 @@
 #include <SuggestServer.hpp>
 #include <fstream>
 
-template <bool isRequest, class Body, class Fields>
-void SendResponse(ip::tcp::socket&,
-                  beast::http::message<isRequest, Body, Fields> msg){
-  beast::http::serializer<isRequest, Body, Fields> serializer {msg};
-  beast::http::write(socket, serializer);
+template <bool isRequest, class Body, class Fields, class Stream>
+void SendResponse(Stream& stream,
+                  beast::http::message<isRequest, Body, Fields>&& msg){
+  beast::http::serializer<isRequest, Body, Fields> serializer(msg);
+  beast::http::write(stream, serializer);
+}
+
+bool operator<(const Suggestion& lhs, const Suggestion& rhs) {
+  return lhs.cost < rhs.cost;
+}
+bool operator==(const Suggestion& lhs, const Suggestion& rhs) {
+  return lhs.cost == rhs.cost;
+}
+bool operator>(const Suggestion& lhs, const Suggestion& rhs) {
+  return lhs.cost > rhs.cost;
 }
 
 
@@ -31,7 +41,7 @@ void SuggestServer::RequestHandler(ip::tcp::socket&& socket) {
       res.keep_alive(req.keep_alive());
       res.body() = "Error! Incorrect request";
       res.prepare_payload();
-      SendResponse(socket, res);
+      SendResponse(socket, std::move(res));
       break;
     } else{
       beast::http::response<beast::http::string_body> res{
@@ -50,7 +60,7 @@ void SuggestServer::RequestHandler(ip::tcp::socket&& socket) {
       }
       res.body() = resBody;
       res.prepare_payload();
-      SendResponse(socket, res);
+      SendResponse(socket, std::move(res));
     }
     if(ec)
       break;
