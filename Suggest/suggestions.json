@@ -26,11 +26,11 @@
     {
       "name": "board",
       "cost": 47
-    }
+    },
     {
       "name": "body",
       "cost": 100
-    }
+    },
     {
       "name": "heart",
       "cost": 89

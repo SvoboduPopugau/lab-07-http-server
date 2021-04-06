@@ -2,6 +2,7 @@
 
 #include <SuggestServer.hpp>
 #include <fstream>
+#include <iostream>
 
 template <bool isRequest, class Body, class Fields, class Stream>
 void SendResponse(Stream& stream,
@@ -29,8 +30,15 @@ void SuggestServer::RequestHandler(ip::tcp::socket&& socket) {
     beast::http::request<beast::http::string_body> req;
     beast::http::read(socket, buffer, req, ec);
 
+    std::cout << "Request read:" << std::endl;
+
     if (ec == beast::http::error::end_of_stream)
       break;
+
+    std::cout << "1" << std::endl;
+    std::cout << req.body() << std::endl;
+    std::cout << "2" << std::endl;
+
 
     if ((req.method() != beast::http::verb::post) || (req.target() != URL_)
         || ec){
@@ -42,6 +50,7 @@ void SuggestServer::RequestHandler(ip::tcp::socket&& socket) {
       res.body() = "Error! Incorrect request";
       res.prepare_payload();
       SendResponse(socket, std::move(res));
+      std::cout << "Bad response sent" << std::endl;
       break;
     } else{
       beast::http::response<beast::http::string_body> res{
@@ -61,21 +70,30 @@ void SuggestServer::RequestHandler(ip::tcp::socket&& socket) {
       res.body() = resBody;
       res.prepare_payload();
       SendResponse(socket, std::move(res));
+      std::cout << "Norm response sent" << std::endl;
     }
     if(ec)
-      break;
+      std::cout << "Foooo" << std::endl;
+    break;
+
   }
 
   socket.shutdown(ip::tcp::socket::shutdown_send);
+  std::cout << "Session success" << std::endl;
+
 }
 
 [[noreturn]] void SuggestServer::StartServer() {
-  std::thread([this](){
-    for(;;){
-      UpdateData();
-      std::this_thread::sleep_for(std::chrono::minutes(15));
-    }
-  }).detach();
+  try {
+    std::thread([this]() {
+      for (;;) {
+        UpdateData();
+        std::this_thread::sleep_for(std::chrono::minutes(15));
+      }
+    }).detach();
+  } catch (const std::exception& e) {
+    std::cerr << e.what() << std::endl;
+  }
   boost::asio::io_context ioContext;
   ip::tcp::endpoint endPoint(address_, port_);
   ip::tcp::acceptor acceptor(ioContext, endPoint);
@@ -83,9 +101,10 @@ void SuggestServer::RequestHandler(ip::tcp::socket&& socket) {
   for(;;){
     ip::tcp::socket socket1{ioContext};
     acceptor.accept(socket1);
-    std::thread([&](){
-      RequestHandler(std::move(socket1));
-    }).detach();
+    std::cout << "CONNECTED" << std::endl;
+    std::thread([this](ip::tcp::socket&& socket){
+      RequestHandler(std::move(std::forward<ip::tcp::socket>(socket)));
+    }, std::move(socket1)).detach();
   }
 }
 void SuggestServer::UpdateData() {
@@ -95,11 +114,12 @@ void SuggestServer::UpdateData() {
   if(!data_file.is_open())
     throw std::runtime_error("Database file couldn't be opened");
 
+
   json j_data;
   data_file >> j_data;
 
-  v_data_.clear();
   mutex_.lock();
+  v_data_.clear();
   for(auto& x : j_data){
     v_data_.push_back({x.at("name"), x.at("cost")});
   }
