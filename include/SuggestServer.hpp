@@ -29,7 +29,7 @@ class SuggestServer{
                          ip::address& address,
                          unsigned port):  URL_(URL),
                                           address_(address),
-                                          port_(port){};
+                                          port_(port){}
   [[noreturn]] void StartServer();
   void RequestHandler(ip::tcp::socket&& socket);
 

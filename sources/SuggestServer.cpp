@@ -130,7 +130,7 @@ std::vector<Suggestion> SuggestServer::GetMatches(std::string& req) {
   std::vector<Suggestion> trueSuggestions;
   mutex_.lock();
   for (auto& x : v_data_){
-    if((x.str_name.size() >= req.size())
+    if ((x.str_name.size() >= req.size())
         && x.str_name.substr(0, req.size()) == req){
       trueSuggestions.push_back(x);
     }
