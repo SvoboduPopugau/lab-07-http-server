@@ -1,13 +1,15 @@
 // Copyright 2020 Your Name <your_email>
 
-#ifndef INCLUDE_HEADER_HPP_
-#define INCLUDE_HEADER_HPP_
+#ifndef INCLUDE_SUGGESTSERVER_HPP_
+#define INCLUDE_SUGGESTSERVER_HPP_
 
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/read.hpp>
 #include <boost/beast/http/string_body.hpp>
 #include <thread>
+#include <string>
 #include <iostream>
+#include <vector>
 #include <boost/beast.hpp>
 #include <nlohmann/json.hpp>
 
@@ -43,4 +45,4 @@ class SuggestServer{
   std::mutex mutex_;
 };
 
-#endif // INCLUDE_HEADER_HPP_
+#endif // INCLUDE_SUGGESTSERVER_HPP_

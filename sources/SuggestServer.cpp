@@ -26,7 +26,7 @@ void SuggestServer::RequestHandler(ip::tcp::socket&& socket) {
   beast::error_code ec;
   beast::flat_buffer buffer;
 
-  for(;;){
+  for (;;){
     beast::http::request<beast::http::string_body> req;
     beast::http::read(socket, buffer, req, ec);
 
@@ -72,15 +72,13 @@ void SuggestServer::RequestHandler(ip::tcp::socket&& socket) {
       SendResponse(socket, std::move(res));
       std::cout << "Norm response sent" << std::endl;
     }
-    if(ec)
+    if (ec)
       std::cout << "Foooo" << std::endl;
     break;
-
   }
 
   socket.shutdown(ip::tcp::socket::shutdown_send);
   std::cout << "Session success" << std::endl;
-
 }
 
 [[noreturn]] void SuggestServer::StartServer() {
@@ -98,7 +96,7 @@ void SuggestServer::RequestHandler(ip::tcp::socket&& socket) {
   ip::tcp::endpoint endPoint(address_, port_);
   ip::tcp::acceptor acceptor(ioContext, endPoint);
 
-  for(;;){
+  for (;;){
     ip::tcp::socket socket1{ioContext};
     acceptor.accept(socket1);
     std::cout << "CONNECTED" << std::endl;
@@ -111,7 +109,7 @@ void SuggestServer::UpdateData() {
   std::ifstream data_file;
   data_file.open("../Suggest/suggestions.json");
 
-  if(!data_file.is_open())
+  if (!data_file.is_open())
     throw std::runtime_error("Database file couldn't be opened");
 
 
@@ -120,7 +118,7 @@ void SuggestServer::UpdateData() {
 
   mutex_.lock();
   v_data_.clear();
-  for(auto& x : j_data){
+  for (auto& x : j_data){
     v_data_.push_back({x.at("name"), x.at("cost")});
   }
   std::sort(v_data_.begin(), v_data_.end());
@@ -131,7 +129,7 @@ void SuggestServer::UpdateData() {
 std::vector<Suggestion> SuggestServer::GetMatches(std::string& req) {
   std::vector<Suggestion> trueSuggestions;
   mutex_.lock();
-  for(auto& x : v_data_){
+  for (auto& x : v_data_){
     if((x.str_name.size() >= req.size())
         && x.str_name.substr(0, req.size()) == req){
       trueSuggestions.push_back(x);
@@ -144,7 +142,7 @@ json SuggestServer::GetResponse(std::string& req) {
   json responseBody;
   std::vector<Suggestion> matches = GetMatches(req);
   unsigned index = 0;
-  for(auto& x : matches){
+  for (auto& x : matches){
     responseBody["suggestions"].push_back({{"text", x.str_name},
                                            {"position", index}});
     ++index;
